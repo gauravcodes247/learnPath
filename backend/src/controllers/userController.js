@@ -1,6 +1,7 @@
 import { registerUserService } from "../services/userService.js";
 
 export const registerUser = async (req, res) => {
+  console.log(req.body);
   try {
     const user = await registerUserService(req.body);
 
