@@ -1,122 +1,101 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react'
+import { auth, onUnauthorized } from './api'
+import Auth from './components/Auth'
+import Dashboard from './components/Dashboard'
+import QuizPage from './components/QuizPage'
+import Library from './components/Library'
+import StudentsOverview from './components/StudentsOverview'
+import TeachersOverview from './components/TeachersOverview'
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+// A saved user only counts if there is also a token (older sessions had none).
+const loadUser = () => {
+  try {
+    return auth.get() ? JSON.parse(localStorage.getItem('lp-user')) : null
+  } catch {
+    return null
+  }
 }
 
-export default App
+const isStaff = (u) => u?.role === 'teacher' || u?.role === 'admin'
+const homeView = (u) => (u?.role === 'admin' ? 'teachers' : isStaff(u) ? 'students' : 'dashboard')
+const navFor = (u) =>
+  u.role === 'admin'
+    ? ['teachers', 'students', 'library']
+    : u.role === 'teacher'
+      ? ['students', 'library']
+      : ['dashboard', 'quiz', 'library']
+
+export default function App() {
+  const [user, setUser] = useState(loadUser)
+  const [view, setView] = useState(() => homeView(loadUser()))
+  const [practiceSet, setPracticeSet] = useState(null)
+  const [quizKey, setQuizKey] = useState(0) // remount quiz page for a fresh quiz
+  const [notice, setNotice] = useState('')
+
+  const login = (u, token) => {
+    auth.set(token)
+    localStorage.setItem('lp-user', JSON.stringify(u))
+    setNotice('')
+    setView(homeView(u))
+    setUser(u)
+  }
+  const logout = (message = '') => {
+    auth.clear()
+    localStorage.removeItem('lp-user')
+    sessionStorage.clear()
+    setNotice(message)
+    setUser(null)
+  }
+
+  // Any API call that comes back 401 (expired/invalid token) logs the user out.
+  useEffect(() => {
+    onUnauthorized((message) => logout(message || 'Please log in again'))
+  }, [])
+  const go = (v) => {
+    setPracticeSet(null)
+    setQuizKey((k) => k + 1)
+    setView(v)
+  }
+
+  if (!user) return <Auth onLogin={login} notice={notice} />
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <span className="brand">LearnPath</span>
+        <nav>
+          {navFor(user).map((v) => (
+            <button key={v} className={view === v ? 'active' : ''} onClick={() => go(v)}>
+              {v[0].toUpperCase() + v.slice(1)}
+            </button>
+          ))}
+        </nav>
+        <span className="muted small">
+          {user.name}
+          {isStaff(user) && ` (${user.role})`} ·{' '}
+          <button className="link" onClick={() => logout()}>
+            Log out
+          </button>
+        </span>
+      </header>
+
+      <main>
+        {view === 'dashboard' && (
+          <Dashboard
+            user={user}
+            onStartQuiz={() => go('quiz')}
+            onPractice={(qs) => {
+              setPracticeSet(qs)
+              setQuizKey((k) => k + 1)
+              setView('quiz')
+            }}
+          />
+        )}
+        {view === 'quiz' && <QuizPage key={quizKey} user={user} practiceSet={practiceSet} />}
+        {view === 'library' && <Library />}
+        {view === 'students' && isStaff(user) && <StudentsOverview user={user} />}
+        {view === 'teachers' && user.role === 'admin' && <TeachersOverview user={user} />}
+      </main>
+    </div>
+  )
+}
