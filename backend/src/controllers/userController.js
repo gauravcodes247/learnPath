@@ -1,4 +1,17 @@
-import { registerUserService } from "../services/userService.js";
+import { registerUserService, loginUserService } from "../services/userService.js";
+
+
+export const loginUser = async (req, res)=>{
+  try{
+    const user  = await loginUserService(req.body);
+
+    return res.status(200).json({
+      success:true,
+
+    })
+  }catch(error){
+  }
+}
 
 export const registerUser = async (req, res) => {
   console.log(req.body);

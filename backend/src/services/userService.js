@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 
 export const registerUserService = async (userData) => {
   const { name, email, password } = userData;
-  const existingUser = await User.findOne({ email });
+  const normalizedEmail = email.trim().toLowerCase();
+  const existingUser = await User.findOne({ normalizedEmail });
   if (existingUser) {
     throw new Error("Email already registered");
   }
@@ -11,8 +12,27 @@ export const registerUserService = async (userData) => {
 
   const user = await User.create({
     name,
-    email,
+    normalizedEmail,
     password: hashedPassword,
   });
+  return user;
+};
+
+export const loginUserService = async (userData) => {
+  const { email, password } = userData;
+  // find user by email
+  const user = await User.findOne({
+    email: email.trim().toLowerCase(),
+  });
+  if (!user) {
+    throw new Error("Invalid email or Password");
+  }
+  //compare password
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) {
+    throw new Error("Invalid email or password");
+  }
+
   return user;
 };
