@@ -8,6 +8,13 @@ const options = {
       version: "1.0.0",
       description: "API documentation for LearnPath",
     },
+    components: {
+      securitySchemes: {
+        bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+      },
+    },
+    // Click "Authorize" in /api-docs and paste the token from /api/users/login
+    security: [{ bearerAuth: [] }],
     servers: [
       {
         url: "http://localhost:5000",

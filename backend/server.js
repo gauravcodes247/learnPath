@@ -1,5 +1,6 @@
-import dotenv from "dotenv";
-dotenv.config();
+// Must be the first import: ES imports are hoisted, so dotenv.config()
+// in the module body would run AFTER app.js and the models had loaded.
+import "dotenv/config";
 
 import app from "./src/app.js";
 import connectDB from "./src/config/db.js";

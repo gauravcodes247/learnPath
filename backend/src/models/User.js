@@ -20,8 +20,16 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "admin"],
+      enum: ["student", "teacher", "admin"],
       default: "student",
+    },
+    // Student → teacher mapping (a reference, not embedded: a teacher has
+    // many students and both are users in the same collection).
+    teacher: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
     },
   },
   { timestamps: true },
